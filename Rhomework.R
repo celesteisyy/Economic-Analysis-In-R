@@ -7,6 +7,7 @@ library(xts)
 time<-as.Date(data$Date,"%m/%d/%Y")#data$Date表示引用data这个数据中的Date列；
                                    #引号内为告知程序你的时间格式为月/日/年
 time#打View(time)也可以，都是查看time
+data$Date<-time#或者直接data$Date<-as.Date(data$Date,"%m/%d/%Y")
 
   #若处理为月度数据
 time_monthly<-as.yearmon(time)
