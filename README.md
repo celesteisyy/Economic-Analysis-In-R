@@ -1,5 +1,3 @@
-# Analysis-of-the-relationship-between-homecountry's-financial-market-and-energy-consumption
-As can be seen, it is kind of a student report based on R.
-The resource of the data is CEINET database, it is an open resource for everyone. 
-And it has to be pointed out that the code I uploaded is one of, but the very core part of the whole report.
-I'm still learning on R, and might keep updating in the future.
+# Simple Analysis of Hostorical Stock Price
+帮舍友写的作业，人第一次学R
+笔者想着写都写了，一起上传了吧
