@@ -119,10 +119,6 @@ ggplot(forex, aes(x = date, y = g))+
 
 ## Comments
 
-The data are from IMF exchange rate(International Monetary Fund, 2023), using GBP against USD as exchange rate.
+The data are from IMF exchange rate(International Monetary Fund, 2023), using EUR against USD as exchange rate.
 
-Ranging from January 1995 to December 2023, period are chose to align with the plots in the lab instruction.(Meaning that idk why choose it)
-
-In March 2009, GBP appreciated most, with a daily increase of 4%.It is 
-
-In June 2006, GBP depreciated most, with a daily decrease of almost 8%. It is suggested to be influenced by Brexit.
+Ranging from January 1995 to December 2023, period are chose to align with the plots in the lab instruction.
