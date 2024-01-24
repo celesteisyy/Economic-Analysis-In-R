@@ -1,6 +1,0 @@
-#Lab 10: Exchange rate of EUR against USD
-
-Data are from IMF(International Monetary Fund). There are 3 different kinds of plots in this file, but they're all describing the change of the forex.
-Usually exchange rate are highly correlated with interest rates among countries' central bank. 
-
-However, I didn't use the interest rate to make comparison, which is definitly the part I should improve.
