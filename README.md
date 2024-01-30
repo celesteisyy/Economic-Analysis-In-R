@@ -1,2 +1,4 @@
 # R Learning
-随缘上传以前作业写的project，因为需要整理:/
+Codes are created in various coursework and practice projects.
+Focusing on Economic data analyzing.
+
