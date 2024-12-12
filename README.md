@@ -15,12 +15,12 @@ The analysis is divided into five main topics:
 
 
 ## Employment
-1. Employment
 This section examines employment trends in Spain using indicators such as gender distribution, seasonally adjusted unemployment rates, and vacancy rates.
 
 **Data Source:**
 
 - OECD (2023). Short-Term Labour Market Statistics
+  
    - Monthly Unemployment Rate
      
    - Working Age Population
