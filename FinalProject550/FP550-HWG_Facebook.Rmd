@@ -1,0 +1,315 @@
+---
+title: "FP550"
+output: html_document
+---
+Runtime: 7‘56” in AWS
+# Preparations
+
+## Package Loading
+
+```{r}
+library(tidyverse)
+library(haven)
+```
+
+## Data Loading
+
+```{r}
+df1 <- read_csv("https://raw.githubusercontent.com/celesteisyy/Economic-Analysis-In-R/refs/heads/main/FinalProject550/historic_property_data.csv")
+head(df1)
+```
+
+## Check Data
+First check overall data
+
+```{r}
+str(df1)
+#make sure to collapse the output after viewing the info for bettering viewing
+```
+
+### Data Type Conversion
+Notice that the type of `ind_large_home`, `ind_garage` and `ind_arms_length`(which is not mentioned in the codebook, quite confusing) is *logi*, we need to convert them into categorical type for models to interpret:
+
+```{r}
+# Convert logical data to factor
+df1$ind_large_home <- as.factor(df1$ind_large_home)
+df1$ind_garage <- as.factor(df1$ind_garage)
+df1$ind_arms_length <- as.factor(df1$ind_arms_length)
+```
+
+
+### NA Omision and Substitute
+
+Here, I manually dropped `meta_cdu`, `char_apts`, `char_attic_fnsh`, `char_renovation`, `char_porch` due to **the large amount of NAs**, which made these variables unavailable for analysis. I also dropped `char_repair_cnd`, `char_site`,`char_cnst_qlty` **based on the codebook guidance**.
+
+**They might influence the final outcome, but the number of available rows was too small to analyze.**
+
+```{r}
+df1_1 <- df1 %>%
+  select(-meta_cdu, -char_apts, -char_attic_fnsh, -char_renovation, -char_porch)%>%
+  select(-char_repair_cnd, -char_site, -char_cnst_qlty)
+
+head(df1_1)
+```
+
+In the simplest case (not considering other, more effective but fancier ML methods such as KNN), to deal with NAs, we fill the them with the **Random Imputation** based on their distribution, since we don't want to change the original distribution.
+```{r}
+set.seed(550)  # Set a random seed to ensure reproducibility
+# Create a copy of df1_1 to store the cleaned data
+df1_cleaned <- df1_1
+
+# Iterate through all columns in df1_cleaned
+for (var in names(df1_cleaned)) {
+  # Check if the column contains NA values
+  if (any(is.na(df1_cleaned[[var]]))) {
+    # Randomly sample from non-NA values to fill the missing values
+    df1_cleaned[[var]][is.na(df1_cleaned[[var]])] <- sample(
+      df1_cleaned[[var]][!is.na(df1_cleaned[[var]])],  # Non-NA values to sample from
+      sum(is.na(df1_cleaned[[var]])),                 # Number of NA values to fill
+      replace = TRUE                                  # Allow repeated sampling
+    )
+  }
+}
+```
+
+## Check Again if Data is Clean
+
+Finally, let's check the cleaned data:
+```{r}
+df1_cleaned_na <- data.frame(colSums(is.na(df1_cleaned)))
+sum(df1_cleaned_na)
+```
+
+## Scaling Data
+
+Since large-scale differences in our data may be caused by extreme outliers, scaling might stabilize model behavior.
+```{r}
+df1_standardized <- df1_cleaned
+
+# Create a list to store scaling parameters
+scaling_params <- list()
+
+# Standardize numeric columns and save scaling parameters
+for (var in names(df1_standardized)) {
+  if (is.numeric(df1_standardized[[var]])) {
+    # Save mean and standard deviation
+    scaling_params[[var]] <- list(
+      mean = mean(df1_standardized[[var]], na.rm = TRUE),
+      sd = sd(df1_standardized[[var]], na.rm = TRUE)
+    )
+    # Standardize the column
+    df1_standardized[[var]] <- (df1_standardized[[var]] - scaling_params[[var]]$mean) / scaling_params[[var]]$sd
+  }
+}
+```
+
+Phew, good enough to proceed!
+
+# Modelling 1 - Feature Selection
+
+Here we first choose *Random Forest* for more precise feature selection
+
+## Packge Loading
+```{r}
+#install.packages("randomForest")
+library(randomForest)
+```
+
+## Feature Selecting
+
+```{r}
+set.seed(550)
+rf_feature <- randomForest(
+  sale_price ~ ., 
+  data = df1_standardized, 
+  keep.inbag = TRUE, # keep selected feature during tree-forming process
+  ntree = 15, 
+  importance = TRUE
+)
+
+print(rf_feature)
+```
+
+We select features based on their importance. Keep only variable whose %IncMSE is greater than 2
+```{r}
+# Extract importance scores
+scores <- importance(rf_feature)
+
+# Sort variables by `%IncMSE` in descending order
+sorted_scores <- scores[order(scores[, "%IncMSE"], decreasing = TRUE), ]
+
+# Set a threshold for `%IncMSE` (e.g., importance > 1.0)
+threshold <- 2
+selected_vars <- rownames(sorted_scores)[sorted_scores[, "%IncMSE"] > threshold]
+
+# Print the selected variables
+print("Variables with Importance Above Threshold (%IncMSE):")
+print(selected_vars)
+```
+
+Before the second model is trained, we need to store our selected features:
+```{r}
+df1_selected <- df1_standardized[, c(selected_vars, "sale_price")]
+```
+
+
+# Modelling 2 - Price Prediction
+
+In this part, we need to use a `predict_property_data` for price predicting
+
+## Data Loading and Cleaning
+Same process as loading df1:
+```{r}
+df2 <- read_csv("https://raw.githubusercontent.com/celesteisyy/Economic-Analysis-In-R/refs/heads/main/FinalProject550/predict_property_data.csv")
+head(df2)
+```
+
+Clean out NAs in df2:
+```{r}
+# Convert logical data to factor
+df2$ind_large_home <- as.factor(df2$ind_large_home)
+df2$ind_garage <- as.factor(df2$ind_garage)
+df2$ind_arms_length <- as.factor(df2$ind_arms_length)
+```
+
+```{r}
+df2_1 <- df2 %>%
+  select(-meta_cdu, -char_apts, -char_attic_fnsh, -char_renovation, -char_porch)%>%
+  select(-char_repair_cnd, -char_site, -char_cnst_qlty)
+
+head(df2_1)
+```
+
+Also, we use **Random Imputation** method to fill NAs.
+```{r}
+set.seed(550)
+
+# Create a copy of df2_1 to store the cleaned data
+df2_cleaned <- df2_1
+
+# Iterate through all columns in df2_cleaned
+for (var in names(df2_cleaned)) {
+  # Check if the column contains NA values
+  if (any(is.na(df2_cleaned[[var]]))) {
+    # Randomly sample from non-NA values to fill the missing values
+    df2_cleaned[[var]][is.na(df2_cleaned[[var]])] <- sample(
+      df2_cleaned[[var]][!is.na(df2_cleaned[[var]])],  # Non-NA values to sample from
+      sum(is.na(df2_cleaned[[var]])),                 # Number of NA values to fill
+      replace = TRUE                                  # Allow repeated sampling
+    )
+  }
+}
+```
+
+
+```{r}
+df2_cleaned_na <- data.frame(colSums(is.na(df2_cleaned)))
+sum(df2_cleaned_na)
+```
+```{r}
+df2_standardized <- df2_cleaned
+
+for (var in names(df2_standardized)) {
+  if (is.numeric(df2_standardized[[var]]) && !is.null(scaling_params[[var]])) {
+    # Standardize using the saved mean and standard deviation
+    df2_standardized[[var]] <- (df2_standardized[[var]] - scaling_params[[var]]$mean) / scaling_params[[var]]$sd
+  }
+}
+```
+
+## Extract Selected Features
+
+```{r}
+# Check if df2 contains all the required variables
+missing_vars <- setdiff(selected_vars, names(df1_selected))
+if (length(missing_vars) > 0) {
+  stop(paste("The following variables are missing in df2:", paste(missing_vars, collapse = ", ")))
+}
+
+# Subset df2 based on the selected variables
+df2_selected <- df2_standardized[, selected_vars]
+```
+
+## Model Constructing
+
+First we need to train the *Second Random Forest* Model for Prediction
+
+### Model Training
+```{r}
+set.seed(550)
+rf_predict <- randomForest(
+  sale_price ~ ., 
+  data = df1_selected, 
+  ntree = 35,
+  importance = TRUE
+)
+```
+
+### Final MSE
+```{r}
+print(rf_predict)
+print(mean(rf_predict$mse))
+```
+
+### Predicting
+
+```{r}
+# Predict on standardized df2
+pred_std <- predict(rf_predict, newdata = df2_selected)
+
+# Reverse standardization for sale_price predictions
+pred<- (pred_std * scaling_params[["sale_price"]]$sd) +
+  scaling_params[["sale_price"]]$mean
+
+# Add predictions to df2
+df2$predicted_sale_price <- pred
+
+# View the final results
+head(df2$predicted_sale_price)
+```
+
+# Backtesting Data
+Same process as we've done in `predict_property_data`, here we use the entire df1 to test our outcome
+```{r}
+# Predict on standardized df2
+pred_df1 <- predict(rf_predict, newdata = df1_standardized)
+
+# Reverse standardization for sale_price predictions
+pred1<- (pred_df1 * scaling_params[["sale_price"]]$sd) +
+  scaling_params[["sale_price"]]$mean
+
+# Add predictions to df2
+df1$predicted_sale_price <- pred1
+
+# View the final results
+head(df1)
+```
+# Summary
+
+## Summary Statistics
+
+```{r}
+summary(c(df2$predicted_sale_price)
+```
+```{r}
+# Create the assessment dataframe
+assessment_df <- data.frame(
+  pid = df2$pid,                      # Property identification numbers
+  assessed_value = df2$predicted_sale_price  # Predicted property values
+)
+
+# Ensure all values are non-missing and non-negative
+assessment_df <- assessment_df[!is.na(assessment_df$assessed_value) & assessment_df$assessed_value >= 0, ]
+
+# Preview the assessment dataframe
+head(assessment_df)
+```
+
+
+# Data Output
+
+Save the file in current working directory
+```{r}
+# Export to a CSV file
+write.csv(assessment_df, "assessed_value.csv", row.names = FALSE)
+```
