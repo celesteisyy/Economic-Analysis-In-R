@@ -15,7 +15,7 @@ library(haven)
 ## Data Loading
 
 ```{r}
-df1 <- read_csv("https://raw.githubusercontent.com/celesteisyy/Economic-Analysis-In-R/refs/heads/main/FinalProject550/historic_property_data.csv")
+df1 <- read_csv("https://raw.githubusercontent.com/celesteisyy/Economic-Analysis-In-R/refs/heads/main/cook_county_prediction/historic_property_data.csv")
 head(df1)
 ```
 
