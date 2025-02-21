@@ -289,7 +289,7 @@ head(df1)
 ## Summary Statistics
 
 ```{r}
-summary(c(df2$predicted_sale_price)
+summary(df2$predicted_sale_price)
 ```
 ```{r}
 # Create the assessment dataframe
