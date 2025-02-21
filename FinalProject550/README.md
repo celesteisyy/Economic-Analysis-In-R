@@ -1,1 +1,1 @@
-This R Project is for the Big Data Analytics Final Project.
+For Cook County Prediction Analysis
